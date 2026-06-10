@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Horas trabajadas</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Horas trabajadas">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f766e'/><circle cx='50' cy='54' r='26' fill='none' stroke='white' stroke-width='7'/><path d='M50 54 V38 M50 54 L62 60' stroke='white' stroke-width='7' stroke-linecap='round'/><path d='M42 20 h16' stroke='white' stroke-width='7' stroke-linecap='round'/></svg>">
+<style>
+:root{--primary:#0f766e;--primary-light:#14b8a6;--bg:#f8fafc;--card:#fff;--text:#1e293b;--text-light:#64748b;--border:#e2e8f0;--danger:#ef4444;--success:#10b981;--warning:#f59e0b;--info:#3b82f6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:system-ui,-apple-system,sans-serif}
+body{background:var(--bg);color:var(--text);margin:0;padding:0 0 78px 0;font-size:15px}
+h2{font-size:1.15rem;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+h3{font-size:.95rem;margin:0 0 10px;display:flex;align-items:center;gap:6px}
+.tab-content{display:none;padding:14px;animation:fadeIn .2s}
+.tab-content.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 4px 14px;box-shadow:0 -2px 10px rgba(0,0,0,.05);z-index:1000}
+.nav-item{background:none;border:none;color:var(--text-light);font-size:.7rem;display:flex;flex-direction:column;align-items:center;gap:3px;width:20%;font-weight:600;padding:5px 2px;border-radius:8px}
+.nav-item.active{color:var(--primary);background:#f0fdfa}
+.nav-icon{font-size:1.3rem}
+.card{background:var(--card);padding:15px;border-radius:12px;box-shadow:0 2px 4px rgba(0,0,0,.04);margin-bottom:14px;border:1px solid #f1f5f9}
+label{display:block;margin-bottom:5px;font-weight:600;font-size:.8rem;color:var(--text-light)}
+input,select,textarea{width:100%;padding:11px;margin-bottom:11px;border:1px solid var(--border);border-radius:8px;font-size:16px;background:#f8fafc;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);background:#fff}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+button.btn{width:100%;padding:13px;border:none;border-radius:8px;font-weight:bold;font-size:15px;cursor:pointer;color:#fff;background:var(--primary);display:flex;justify-content:center;align-items:center;gap:6px}
+button.btn-danger{background:var(--danger)}
+button.btn-success{background:var(--success)}
+button.btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary)}
+button.btn-small{padding:6px 10px;font-size:.78rem;width:auto;border-radius:6px}
+.dash-box{padding:14px;border-radius:10px;text-align:center;color:#fff;margin-bottom:13px}
+.dash-finance{background:linear-gradient(135deg,#059669,#10b981)}
+.dash-number{font-size:1.7rem;font-weight:bold;margin-top:4px}
+.dash-sub{font-size:.78rem;margin-top:4px;opacity:.9}
+.badge{padding:3px 8px;border-radius:6px;font-size:.72rem;font-weight:bold;display:inline-block}
+.badge-info{background:#dbeafe;color:#1e40af}
+.badge-warning{background:#fef3c7;color:#b45309}
+.badge-success{background:#d1fae5;color:#065f46}
+.badge-gray{background:#e2e8f0;color:#475569}
+.item-list{display:flex;flex-direction:column;gap:9px}
+.list-card{border:1px solid var(--border);border-radius:8px;padding:11px;background:#fff}
+.list-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px}
+.list-title{font-weight:bold;font-size:.95rem}
+.muted{color:var(--text-light);font-size:.82rem}
+.mono{font-variant-numeric:tabular-nums}
+.progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin:7px 0}
+.progress-fill{height:100%;background:var(--primary);transition:width .3s}
+.timer-display{font-size:2.4rem;font-weight:bold;text-align:center;font-variant-numeric:tabular-nums;margin:13px 0;color:var(--primary);letter-spacing:2px}
+.timer-active{animation:pulse 2s infinite;color:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+hr{border:none;border-top:1px solid var(--border);margin:13px 0}
+.tip{background:#fef3c7;color:#b45309;padding:8px 10px;border-radius:6px;font-size:.8rem;margin-bottom:10px}
+.row-flex{display:flex;gap:8px;align-items:center}
+.empty{color:var(--text-light);font-size:.85rem;padding:6px 2px}
+.task-done{text-decoration:line-through;opacity:.55}
+</style>
+</head>
+<body>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" data-tab="tab-dash" onclick="switchTab('tab-dash',this)"><span class="nav-icon">📊</span>Panel</button>
+  <button class="nav-item" data-tab="tab-obras" onclick="switchTab('tab-obras',this)"><span class="nav-icon">🏗️</span>Obras</button>
+  <button class="nav-item" data-tab="tab-tareas" onclick="switchTab('tab-tareas',this)"><span class="nav-icon">📋</span>Tareas</button>
+  <button class="nav-item" data-tab="tab-tiempo" onclick="switchTab('tab-tiempo',this)"><span class="nav-icon">⏱️</span>Tiempos</button>
+  <button class="nav-item" data-tab="tab-liq" onclick="switchTab('tab-liq',this)"><span class="nav-icon">💰</span>Liquidar</button>
+</nav>
+
+<!-- ============ PANEL ============ -->
+<div id="tab-dash" class="tab-content active">
+  <h2>📊 Panel de control</h2>
+  <div class="dash-box dash-finance">
+    <div>A facturar este mes</div>
+    <div class="dash-number">$<span id="dashTotalMoney">0</span></div>
+    <div class="dash-sub" id="dashTotalSub">—</div>
+  </div>
+  <div class="grid-2">
+    <div class="card" style="text-align:center"><div class="muted">Hoy</div><div style="font-size:1.25rem;font-weight:bold" id="dashToday">0 min</div></div>
+    <div class="card" style="text-align:center"><div class="muted">Esta semana</div><div style="font-size:1.25rem;font-weight:bold" id="dashWeek">0 min</div></div>
+  </div>
+  <div class="card" id="monoCard" style="border-left:4px solid var(--success)">
+    <h3>🧾 Monotributo (últimos 12 meses)</h3>
+    <div id="monoBody" class="muted">Elegí tu categoría en Liquidar.</div>
+  </div>
+  <div class="card" style="border-left:4px solid var(--danger)">
+    <h3>⚠️ Vencimientos y tareas urgentes</h3>
+    <div id="dashAlertsList" class="item-list"></div>
+  </div>
+  <div class="card" style="border-left:4px solid var(--info)">
+    <h3>🛒 Materiales por comprar</h3>
+    <div id="dashMaterialsList" class="item-list"></div>
+  </div>
+</div>
+
+<!-- ============ OBRAS ============ -->
+<div id="tab-obras" class="tab-content">
+  <div class="card">
+    <h2>🏢 Empresas y contactos</h2>
+    <div class="grid-2" style="margin-bottom:0">
+      <input type="text" id="newCompName" placeholder="Ej: VITCO">
+      <input type="text" id="newCompContact" placeholder="Responder a (Ej: Ricardo)">
+    </div>
+    <label>Valor hora propio (US$, opcional)</label>
+    <input type="number" id="newCompRate" placeholder="Vacío = usa el valor general">
+    <button class="btn btn-outline" onclick="addCompany()">+ Guardar empresa</button>
+    <div id="companyListDisplay" class="item-list" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>🏗️ Nuevo proyecto / obra</h2>
+    <label>Empresa cliente</label>
+    <select id="projCompanySelect"></select>
+    <label>Nombre del proyecto</label>
+    <input type="text" id="projName" placeholder="Ej: Tablero General Planta 2">
+    <div class="grid-2">
+      <div><label>Fecha límite</label><input type="date" id="projDeadline"></div>
+      <div><label>Modalidad de cobro</label>
+        <select id="projMode" onchange="toggleProjPrice()">
+          <option value="hora">Por horas</option>
+          <option value="fijo">Precio fijo</option>
+        </select>
+      </div>
+    </div>
+    <div id="projPriceContainer" style="display:none">
+      <label>Honorarios fijados (US$)</label>
+      <input type="number" id="projPrice" placeholder="Monto total del proyecto">
+    </div>
+    <label>Materiales por comprar</label>
+    <textarea id="projMaterials" rows="2" placeholder="Cables, contactores, térmicas…"></textarea>
+    <button class="btn btn-success" onclick="addProject()">📝 Registrar proyecto</button>
+  </div>
+
+  <div class="card">
+    <h2>📂 En ejecución / pendientes</h2>
+    <div id="projectsList" class="item-list"></div>
+  </div>
+</div>
+
+<!-- ============ TAREAS ============ -->
+<div id="tab-tareas" class="tab-content">
+  <div class="card">
+    <h2>📋 Nuevo pendiente</h2>
+    <label>Empresa</label>
+    <select id="taskCompSelect" onchange="prefillTaskWho()"></select>
+    <label>Qué hay que hacer</label>
+    <input type="text" id="taskText" placeholder="Ej: enviar informe del PLC, cotizar variador">
+    <div class="grid-2">
+      <div><label>Responder a</label><input type="text" id="taskWho" placeholder="Persona"></div>
+      <div><label>Fecha límite (opcional)</label><input type="date" id="taskDue"></div>
+    </div>
+    <button class="btn btn-success" onclick="addTask()">+ Agregar pendiente</button>
+  </div>
+  <div class="card">
+    <h2>⏳ Pendientes por empresa</h2>
+    <div id="tasksList" class="item-list"></div>
+  </div>
+  <div class="card">
+    <h3>✅ Completados recientes</h3>
+    <div id="tasksDoneList" class="item-list"></div>
+  </div>
+</div>
+
+<!-- ============ TIEMPOS ============ -->
+<div id="tab-tiempo" class="tab-content">
+  <div class="card" style="border:2px solid var(--primary)">
+    <h2>⏱️ Cronómetro de visita</h2>
+    <label>1. ¿En qué empresa estás?</label>
+    <select id="timeCompSelect" onchange="updateTimeProjects()"></select>
+    <label>2. ¿Qué estás haciendo?</label>
+    <select id="timeProjSelect"><option value="0">🔧 Mantenimiento general</option></select>
+    <label>3. Novedades de la visita (opcional)</label>
+    <textarea id="timeNotes" rows="2" placeholder="Avanzamos con el cableado. Falta…"></textarea>
+    <div id="timerValue" class="timer-display mono">00:00:00</div>
+    <div id="timerWho" class="muted" style="text-align:center;margin-top:-8px;margin-bottom:10px"></div>
+    <button id="btnPlay" class="btn btn-success" onclick="startTimer()">▶ Iniciar trabajo</button>
+    <button id="btnStop" class="btn btn-danger" style="display:none" onclick="stopTimer()">⏹ Finalizar y guardar</button>
+  </div>
+
+  <div class="card">
+    <h2>📝 Carga manual</h2>
+    <div class="tip">💡 Si querés dejar una observación sin cobrar horas, poné 0 h 0 min.</div>
+    <label>Empresa</label>
+    <select id="manualCompSelect" onchange="updateManualProjects()"></select>
+    <label>Asignar a</label>
+    <select id="manualProjSelect"><option value="0">🔧 Mantenimiento general</option></select>
+    <label>Fecha de la visita</label>
+    <input type="date" id="manualDate">
+    <label>Horario (opcional, calcula solo)</label>
+    <div class="grid-2">
+      <input type="time" id="manualStart" onchange="calcManualTime()">
+      <input type="time" id="manualEnd" onchange="calcManualTime()">
+    </div>
+    <div class="grid-2">
+      <div><label>Horas</label><input type="number" id="manualH" value="0" min="0" onclick="this.select()"></div>
+      <div><label>Minutos</label><input type="number" id="manualM" value="0" min="0" max="59" onclick="this.select()"></div>
+    </div>
+    <label>Detalle del trabajo</label>
+    <textarea id="manualNote" rows="2" placeholder="…"></textarea>
+    <div class="grid-2">
+      <button class="btn btn-success" onclick="saveManualTime(1)">➕ Sumar</button>
+      <button class="btn btn-danger" onclick="saveManualTime(-1)">➖ Descontar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LIQUIDAR ============ -->
+<div id="tab-liq" class="tab-content">
+  <div class="card">
+    <h2>⚙️ Configuración económica</h2>
+    <div class="grid-2">
+      <div><label>Valor hora general (US$)</label><input type="number" id="cfgUsd" step="0.5" oninput="saveConfig()"></div>
+      <div><label>Cotiz. BNA (ARS)</label>
+        <div class="row-flex">
+          <input type="number" id="cfgArs" step="0.5" oninput="saveConfig()" style="margin-bottom:0">
+          <button class="btn btn-small btn-outline" style="white-space:nowrap" onclick="fetchCotiz()">↻</button>
+        </div>
+      </div>
+    </div>
+    <div id="cotizMsg" class="muted" style="margin:6px 0 10px"></div>
+    <label>Reportar a (jefe / socio)</label>
+    <input type="text" id="cfgBoss" placeholder="Ej: Gabriel" oninput="saveConfig()">
+    <label>Categoría de monotributo (servicios)</label>
+    <select id="cfgMonoCat" onchange="pickMonoCat()"></select>
+    <label>Tope anual (editable, $)</label>
+    <input type="number" id="cfgMonoLimit" oninput="saveConfig()">
+    <div class="muted" style="font-size:.75rem">Topes ARCA vigentes desde jun-2026, se actualizan cada semestre. Verificalos con tu contador.</div>
+  </div>
+
+  <div class="card">
+    <h2>💰 Liquidación mensual</h2>
+    <label>Mes a liquidar</label>
+    <input type="month" id="liqMonth" onchange="renderLiquidacion()">
+    <div id="liqSummary" style="margin-top:12px;font-size:.9rem"></div>
+    <div class="dash-box dash-finance" style="margin-top:13px">
+      TOTAL: $<span id="liqTotalStr" class="mono">0</span> ARS
+      <div class="dash-sub" id="liqTotalUsd"></div>
+    </div>
+    <div id="liqEstados" class="grid-3" style="margin-bottom:12px"></div>
+    <button class="btn btn-success" onclick="sendWhatsApp()">💬 Enviar resumen por WhatsApp</button>
+    <button class="btn btn-outline" style="margin-top:9px" onclick="exportCSV()">📥 Descargar detalle (Excel/CSV)</button>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--success)">
+    <h2>💾 Copia de seguridad</h2>
+    <div class="muted" style="margin-bottom:10px">Bajá un archivo con TODO y restauralo en otro dispositivo (o si se vacía el navegador). Guardalo en tu Drive.</div>
+    <div class="grid-2">
+      <button class="btn btn-success" onclick="exportBackup()">⬇ Crear copia</button>
+      <button class="btn btn-outline" onclick="document.getElementById('backupFile').click()">⬆ Restaurar</button>
+    </div>
+    <input type="file" id="backupFile" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
+  </div>
+
+  <div class="card">
+    <h2>📜 Movimientos del mes</h2>
+    <div id="logList" class="item-list" style="max-height:340px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<script>
+// ====================== BASE DE DATOS LOCAL ======================
+var DB_KEY='horasTrabajadas_v1', TIMER_KEY='horasTrabajadasTimer_v1';
+var db; 
+try{ db=JSON.parse(localStorage.getItem(DB_KEY)); }catch(e){ db=null; }
+db = db || { config:{usd:'',ars:'',boss:'',monoCat:'',monoLimit:''}, companies:[], projects:[], tasks:[], logs:[] };
+db.tasks = db.tasks||[];
+
+var activeTimer=null; try{ activeTimer=JSON.parse(localStorage.getItem(TIMER_KEY)); }catch(e){}
+var timerInterval=null;
+
+// Topes anuales monotributo servicios (ARCA jun-2026) — editable en config
+var MONO=[["A",10277988],["B",15058448],["C",21113697],["D",26212853],["E",30833964],["F",38642048],["G",46211109],["H",70113407],["I",78479212],["J",89872640],["K",108357084]];
+
+// ====================== HELPERS ======================
+function $(id){return document.getElementById(id);}
+function pad(n){return String(n).padStart(2,'0');}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function monthKey(s){return (s||'').slice(0,7);}
+function fmtHM(mins){mins=Math.round(mins);var neg=mins<0,t=Math.abs(mins),h=Math.floor(t/60),m=t%60;if(t===0)return '0 min';var s=h>0&&m>0?h+' h '+m+' min':h>0?h+' h':m+' min';return (neg?'−':'')+s;}
+function fmtARS(n){return (n||0).toLocaleString('es-AR',{maximumFractionDigits:0});}
+function fmtARS2(n){return (n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtUSD(n){return 'US$ '+(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function compById(id){for(var i=0;i<db.companies.length;i++)if(db.companies[i].id==id)return db.companies[i];return null;}
+function projById(id){for(var i=0;i<db.projects.length;i++)if(db.projects[i].id==id)return db.projects[i];return null;}
+function rateOf(compId){var c=compById(compId);var r=c&&c.rate?parseFloat(c.rate):parseFloat(db.config.usd)||0;return r||0;}
+function cotizNow(){return parseFloat(db.config.ars)||0;}
+function logUSD(l){return (l.minutes/60)*rateOf(l.compId)*(l.sign||1);}
+function logARS(l){var c=l.cotiz&&l.cotiz>0?l.cotiz:cotizNow();return logUSD(l)*c;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function parseLocal(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+
+// ====================== INIT ======================
+document.addEventListener('DOMContentLoaded',function(){
+  $('cfgUsd').value=db.config.usd; $('cfgArs').value=db.config.ars; $('cfgBoss').value=db.config.boss;
+  var sel=$('cfgMonoCat'); sel.innerHTML='<option value="">Sin categoría</option>'+MONO.map(function(m){return '<option value="'+m[0]+'">Cat. '+m[0]+' — hasta $'+fmtARS(m[1])+'/año</option>';}).join('');
+  sel.value=db.config.monoCat||''; $('cfgMonoLimit').value=db.config.monoLimit||'';
+  var now=new Date();
+  $('manualDate').value=todayStr();
+  $('liqMonth').value=now.getFullYear()+'-'+pad(now.getMonth()+1);
+  refreshAllUI();
+  if(activeTimer) startTimerUI();
+});
+
+function switchTab(tabId,btn){
+  document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');});
+  $(tabId).classList.add('active'); btn.classList.add('active');
+  refreshAllUI();
+}
+
+function saveDB(){localStorage.setItem(DB_KEY,JSON.stringify(db));refreshAllUI();}
+function saveConfig(){
+  db.config.usd=$('cfgUsd').value; db.config.ars=$('cfgArs').value; db.config.boss=$('cfgBoss').value;
+  db.config.monoLimit=$('cfgMonoLimit').value;
+  saveDB();
+}
+function pickMonoCat(){
+  var cat=$('cfgMonoCat').value; db.config.monoCat=cat;
+  for(var i=0;i<MONO.length;i++) if(MONO[i][0]===cat) $('cfgMonoLimit').value=MONO[i][1];
+  saveConfig();
+}
+
+function refreshAllUI(){renderCompanies();renderSelects();renderProjects();renderTasks();renderDash();renderLiquidacion();renderLog();}
+
+// ====================== COTIZACIÓN AUTO ======================
+function fetchCotiz(){
+  $('cotizMsg').textContent='Buscando cotización…';
+  fetch('https://dolarapi.com/v1/dolares/oficial').then(function(r){return r.json();}).then(function(j){
+    var v=j.venta||j.compra;
+    if(v){$('cfgArs').value=v;db.config.ars=v;saveDB();$('cotizMsg').textContent='Actualizada: $'+v+' (oficial venta, '+new Date().toLocaleDateString('es-AR')+'). Verificá contra BNA si hace falta exactitud.';}
+    else throw new Error();
+  }).catch(function(){$('cotizMsg').textContent='No se pudo obtener (¿sin internet?). Cargala a mano.';});
+}
+
+// ====================== EMPRESAS ======================
+function addCompany(){
+  var name=$('newCompName').value.trim(), contact=$('newCompContact').value.trim(), rate=$('newCompRate').value;
+  if(!name)return alert('Ingresá el nombre de la empresa');
+  db.companies.push({id:Date.now(),name:name,contact:contact||'Sin contacto',rate:rate||''});
+  $('newCompName').value='';$('newCompContact').value='';$('newCompRate').value='';
+  saveDB();
+}
+function delCompany(id){
+  if(!confirm('¿Eliminar esta empresa? Sus horas y pendientes quedarán sin empresa.'))return;
+  db.companies=db.companies.filter(function(c){return c.id!=id;});saveDB();
+}
+function renderCompanies(){
+  var el=$('companyListDisplay');
+  if(!db.companies.length){el.innerHTML='<div class="empty">Sin empresas cargadas. Agregá la primera arriba.</div>';return;}
+  el.innerHTML=db.companies.map(function(c){
+    return '<div class="list-card"><div class="list-head"><div><div class="list-title">'+esc(c.name)+'</div>'+
+    '<div class="muted">Responder a: <b>'+esc(c.contact)+'</b>'+(c.rate?' · US$'+c.rate+'/h':' · valor general')+'</div></div>'+
+    '<button class="btn btn-small btn-danger" onclick="delCompany('+c.id+')">✕</button></div></div>';
+  }).join('');
+}
+function renderSelects(){
+  var opts='<option value="">— Elegí empresa —</option>'+db.companies.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+' ('+esc(c.contact)+')</option>';}).join('');
+  ['projCompanySelect','timeCompSelect','manualCompSelect','taskCompSelect'].forEach(function(id){
+    var sel=$(id),prev=sel.value;sel.innerHTML=opts;if(prev)sel.value=prev;
+  });
+  updateTimeProjects();updateManualProjects();
+}
+
+// ====================== PROYECTOS ======================
+function toggleProjPrice(){$('projPriceContainer').style.display=$('projMode').value==='fijo'?'block':'none';}
+function addProject(){
+  var compId=$('projCompanySelect').value,name=$('projName').value.trim();
+  if(!compId||!name)return alert('Empresa y nombre del proyecto son obligatorios');
+  db.projects.push({id:Date.now(),compId:+compId,name:name,deadline:$('projDeadline').value,mode:$('projMode').value,
+    price:parseFloat($('projPrice').value)||0,materials:$('projMaterials').value.trim(),progress:0,status:'ejecucion'});
+  $('projName').value='';$('projMaterials').value='';$('projPrice').value='';$('projDeadline').value='';
+  saveDB();
+}
+function projMinutes(pid){var t=0;db.logs.forEach(function(l){if(l.projId==pid)t+=l.minutes*(l.sign||1);});return t;}
+function setProgress(id,delta){var p=projById(id);if(!p)return;p.progress=Math.max(0,Math.min(100,(p.progress||0)+delta));saveDB();}
+function finishProject(id){var p=projById(id);if(!p)return;if(!confirm('¿Marcar "'+p.name+'" como terminado?'))return;p.status='terminado';p.progress=100;saveDB();}
+function delProject(id){if(!confirm('¿Eliminar este proyecto?'))return;db.projects=db.projects.filter(function(p){return p.id!=id;});saveDB();}
+function clearMaterials(id){var p=projById(id);if(p){p.materials='';saveDB();}}
+function renderProjects(){
+  var el=$('projectsList'),act=db.projects.filter(function(p){return p.status!=='terminado';});
+  if(!act.length){el.innerHTML='<div class="empty">No hay proyectos activos.</div>';return;}
+  el.innerHTML=act.map(function(p){
+    var c=compById(p.compId)||{name:'—',contact:''};
+    var days=p.deadline?Math.ceil((parseLocal(p.deadline)-new Date())/86400000):null;
+    var dl=days===null?'':(days<0?'<span class="badge badge-warning">vencido hace '+(-days)+' d</span>':days<=5?'<span class="badge badge-warning">vence en '+days+' d</span>':'<span class="badge badge-gray">'+days+' días</span>');
+    var mins=projMinutes(p.id);
+    var cobro=p.mode==='fijo'?'<span class="badge badge-info">Fijo: '+fmtUSD(p.price)+'</span>':'<span class="badge badge-info">Por horas · '+fmtHM(mins)+'</span>';
+    return '<div class="list-card">'+
+      '<div class="list-head"><div><div class="list-title">'+esc(p.name)+'</div><div class="muted">'+esc(c.name)+' · responder a <b>'+esc(c.contact)+'</b></div></div>'+dl+'</div>'+
+      '<div style="margin:4px 0">'+cobro+'</div>'+
+      (p.materials?'<div class="muted">🛒 '+esc(p.materials)+'</div>':'')+
+      '<div class="progress-bar"><div class="progress-fill" style="width:'+(p.progress||0)+'%"></div></div>'+
+      '<div class="row-flex" style="flex-wrap:wrap">'+
+      '<button class="btn btn-small btn-outline" onclick="setProgress('+p.id+',-10)">−10%</button>'+
+      '<span class="muted mono">'+(p.progress||0)+'%</span>'+
+      '<button class="btn btn-small btn-outline" onclick="setProgress('+p.id+',10)">+10%</button>'+
+      '<button class="btn btn-small btn-success" style="margin-left:auto" onclick="finishProject('+p.id+')">✓ Terminar</button>'+
+      '<button class="btn btn-small btn-danger" onclick="delProject('+p.id+')">✕</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+// ====================== TAREAS / PENDIENTES ======================
+function prefillTaskWho(){var c=compById($('taskCompSelect').value);if(c&&!$('taskWho').value)$('taskWho').value=c.contact==='Sin contacto'?'':c.contact;}
+function addTask(){
+  var compId=$('taskCompSelect').value,text=$('taskText').value.trim();
+  if(!compId||!text)return alert('Elegí empresa y escribí el pendiente');
+  db.tasks.push({id:Date.now(),compId:+compId,text:text,who:$('taskWho').value.trim(),due:$('taskDue').value,done:false});
+  $('taskText').value='';$('taskWho').value='';$('taskDue').value='';
+  saveDB();
+}
+function toggleTask(id){db.tasks.forEach(function(t){if(t.id==id)t.done=!t.done;});saveDB();}
+function delTask(id){db.tasks=db.tasks.filter(function(t){return t.id!=id;});saveDB();}
+function taskHtml(t){
+  var c=compById(t.compId)||{name:'—'};
+  var days=t.due?Math.ceil((parseLocal(t.due)-new Date())/86400000):null;
+  var dl=days===null?'':(days<0?'<span class="badge badge-warning">vencido</span>':days<=3?'<span class="badge badge-warning">'+days+' d</span>':'<span class="badge badge-gray">'+days+' d</span>');
+  return '<div class="list-card'+(t.done?' task-done':'')+'">'+
+    '<div class="list-head"><div><div class="list-title">'+esc(t.text)+'</div>'+
+    '<div class="muted">'+esc(c.name)+(t.who?' · responder a <b>'+esc(t.who)+'</b>':'')+'</div></div>'+dl+'</div>'+
+    '<div class="row-flex"><button class="btn btn-small '+(t.done?'btn-outline':'btn-success')+'" onclick="toggleTask('+t.id+')">'+(t.done?'↩ Reabrir':'✓ Hecho')+'</button>'+
+    '<button class="btn btn-small btn-danger" style="margin-left:auto" onclick="delTask('+t.id+')">✕</button></div></div>';
+}
+function renderTasks(){
+  var pend=db.tasks.filter(function(t){return !t.done;});
+  var done=db.tasks.filter(function(t){return t.done;}).slice(-5).reverse();
+  // ordenar pendientes: con vencimiento primero
+  pend.sort(function(a,b){return (a.due||'9999')<(b.due||'9999')?-1:1;});
+  $('tasksList').innerHTML=pend.length?pend.map(taskHtml).join(''):'<div class="empty">Sin pendientes. 🎉</div>';
+  $('tasksDoneList').innerHTML=done.length?done.map(taskHtml).join(''):'<div class="empty">Todavía nada completado.</div>';
+}
+
+// ====================== CRONÓMETRO ======================
+function updateTimeProjects(){fillProjSelect('timeCompSelect','timeProjSelect');}
+function updateManualProjects(){fillProjSelect('manualCompSelect','manualProjSelect');}
+function fillProjSelect(compSelId,projSelId){
+  var compId=$(compSelId).value,sel=$(projSelId),prev=sel.value;
+  var opts='<option value="0">🔧 Mantenimiento general</option>';
+  db.projects.filter(function(p){return p.compId==compId&&p.status!=='terminado';}).forEach(function(p){opts+='<option value="'+p.id+'">🏗️ '+esc(p.name)+'</option>';});
+  sel.innerHTML=opts;if(prev)sel.value=prev;
+}
+function startTimer(){
+  var compId=$('timeCompSelect').value;
+  if(!compId)return alert('Elegí la empresa primero');
+  activeTimer={start:Date.now(),compId:+compId,projId:+$('timeProjSelect').value||0};
+  localStorage.setItem(TIMER_KEY,JSON.stringify(activeTimer));
+  startTimerUI();
+}
+function startTimerUI(){
+  $('btnPlay').style.display='none';$('btnStop').style.display='flex';
+  $('timerValue').classList.add('timer-active');
+  var c=compById(activeTimer.compId);
+  $('timerWho').textContent=c?('En '+c.name+(c.contact&&c.contact!=='Sin contacto'?' · responder a '+c.contact:'')):'';
+  if($('timeCompSelect').value!=String(activeTimer.compId)){$('timeCompSelect').value=activeTimer.compId;updateTimeProjects();}
+  tick();timerInterval=setInterval(tick,1000);
+}
+function tick(){
+  if(!activeTimer)return;
+  var s=Math.floor((Date.now()-activeTimer.start)/1000);
+  $('timerValue').textContent=pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60);
+}
+function stopTimer(){
+  if(!activeTimer)return;
+  var mins=Math.max(1,Math.round((Date.now()-activeTimer.start)/60000));
+  var startD=new Date(activeTimer.start),endD=new Date();
+  db.logs.push({id:Date.now(),compId:activeTimer.compId,projId:activeTimer.projId,date:todayStr(),
+    minutes:mins,sign:1,note:$('timeNotes').value.trim(),
+    start:pad(startD.getHours())+':'+pad(startD.getMinutes()),end:pad(endD.getHours())+':'+pad(endD.getMinutes()),
+    cotiz:cotizNow(),status:'pendiente'});
+  activeTimer=null;localStorage.removeItem(TIMER_KEY);clearInterval(timerInterval);
+  $('btnPlay').style.display='flex';$('btnStop').style.display='none';
+  $('timerValue').classList.remove('timer-active');$('timerValue').textContent='00:00:00';$('timerWho').textContent='';
+  $('timeNotes').value='';
+  saveDB();alert('Visita guardada: '+fmtHM(mins));
+}
+
+// ====================== CARGA MANUAL ======================
+function calcManualTime(){
+  var a=$('manualStart').value,b=$('manualEnd').value;
+  if(!a||!b)return;
+  var p=a.split(':'),q=b.split(':');
+  var mins=(+q[0]*60+ +q[1])-(+p[0]*60+ +p[1]);
+  if(mins<0)mins+=1440;
+  $('manualH').value=Math.floor(mins/60);$('manualM').value=mins%60;
+}
+function saveManualTime(sign){
+  var compId=$('manualCompSelect').value;
+  if(!compId)return alert('Elegí la empresa');
+  var mins=(parseInt($('manualH').value)||0)*60+(parseInt($('manualM').value)||0);
+  var note=$('manualNote').value.trim();
+  if(mins===0&&!note)return alert('Cargá tiempo o al menos una observación');
+  db.logs.push({id:Date.now(),compId:+compId,projId:+$('manualProjSelect').value||0,date:$('manualDate').value||todayStr(),
+    minutes:mins,sign:sign,note:note,start:$('manualStart').value||'',end:$('manualEnd').value||'',
+    cotiz:cotizNow(),status:'pendiente'});
+  $('manualH').value=0;$('manualM').value=0;$('manualNote').value='';$('manualStart').value='';$('manualEnd').value='';
+  saveDB();alert(sign>0?'Registro sumado.':'Tiempo descontado.');
+}
+
+// ====================== LOGS / ESTADOS ======================
+function cycleStatus(id){
+  db.logs.forEach(function(l){if(l.id==id)l.status=l.status==='pendiente'?'facturado':l.status==='facturado'?'cobrado':'pendiente';});
+  saveDB();
+}
+function delLog(id){if(!confirm('¿Eliminar este registro?'))return;db.logs=db.logs.filter(function(l){return l.id!=id;});saveDB();}
+function statusBadge(s){return s==='cobrado'?'<span class="badge badge-success">Cobrado</span>':s==='facturado'?'<span class="badge badge-info">Facturado</span>':'<span class="badge badge-gray">Pendiente</span>';}
+function renderLog(){
+  var mk=$('liqMonth').value||monthKey(todayStr());
+  var logs=db.logs.filter(function(l){return monthKey(l.date)===mk;}).sort(function(a,b){return a.date<b.date?1:-1;});
+  var el=$('logList');
+  if(!logs.length){el.innerHTML='<div class="empty">Sin movimientos este mes.</div>';return;}
+  el.innerHTML=logs.map(function(l){
+    var c=compById(l.compId)||{name:'—'},p=l.projId?projById(l.projId):null;
+    var d=parseLocal(l.date);
+    return '<div class="list-card"><div class="list-head"><div>'+
+      '<div class="list-title">'+esc(c.name)+(p?' · '+esc(p.name):'')+'</div>'+
+      '<div class="muted">'+pad(d.getDate())+'/'+pad(d.getMonth()+1)+(l.start&&l.end?' · '+l.start+'–'+l.end:'')+' · <b>'+(l.sign<0?'−':'')+fmtHM(l.minutes)+'</b></div>'+
+      (l.note?'<div class="muted">📝 '+esc(l.note)+'</div>':'')+
+      '</div><div style="text-align:right">'+statusBadge(l.status)+'<div class="muted mono">$'+fmtARS(logARS(l))+'</div></div></div>'+
+      '<div class="row-flex"><button class="btn btn-small btn-outline" onclick="cycleStatus('+l.id+')">Cambiar estado</button>'+
+      '<button class="btn btn-small btn-danger" style="margin-left:auto" onclick="delLog('+l.id+')">✕</button></div></div>';
+  }).join('');
+}
+
+// ====================== LIQUIDACIÓN ======================
+function monthAgg(mk){
+  var by={},totMin=0,totUsd=0,totArs=0,est={pendiente:0,facturado:0,cobrado:0};
+  db.logs.forEach(function(l){
+    if(monthKey(l.date)!==mk)return;
+    var k=l.compId;
+    if(!by[k])by[k]={mins:0,usd:0,ars:0};
+    var sgn=l.sign||1;
+    by[k].mins+=l.minutes*sgn;by[k].usd+=logUSD(l);by[k].ars+=logARS(l);
+    totMin+=l.minutes*sgn;totUsd+=logUSD(l);totArs+=logARS(l);
+    est[l.status||'pendiente']+=logARS(l);
+  });
+  // proyectos fijos terminados en el mes no se rastrean por fecha — los de precio fijo se suman manualmente si querés
+  return {by:by,totMin:totMin,totUsd:totUsd,totArs:totArs,est:est};
+}
+function renderLiquidacion(){
+  var mk=$('liqMonth').value||monthKey(todayStr());
+  var a=monthAgg(mk);
+  var html='';
+  Object.keys(a.by).forEach(function(k){
+    var c=compById(k)||{name:'— sin empresa —'},v=a.by[k];
+    html+='<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:7px 0">'+
+      '<div><b>'+esc(c.name)+'</b><div class="muted">'+fmtHM(v.mins)+' · US$'+rateOf(+k)+'/h</div></div>'+
+      '<div style="text-align:right"><b class="mono">$'+fmtARS(v.ars)+'</b><div class="muted mono">'+fmtUSD(v.usd)+'</div></div></div>';
+  });
+  $('liqSummary').innerHTML=html||'<div class="empty">Sin horas en el mes elegido.</div>';
+  $('liqTotalStr').textContent=fmtARS(a.totArs);
+  $('liqTotalUsd').textContent=fmtUSD(a.totUsd)+' · '+fmtHM(a.totMin);
+  $('liqEstados').innerHTML=['pendiente','facturado','cobrado'].map(function(s){
+    return '<div class="card" style="margin:0;padding:9px;text-align:center"><div class="muted" style="font-size:.7rem;text-transform:uppercase">'+s+'</div><div class="mono" style="font-weight:bold">$'+fmtARS(a.est[s])+'</div></div>';
+  }).join('');
+  renderLog();
+}
+function sendWhatsApp(){
+  var mk=$('liqMonth').value,a=monthAgg(mk);
+  var boss=db.config.boss||'';
+  var lines=['*Resumen de horas — '+mk+'*'+(boss?' (para '+boss+')':''),''];
+  Object.keys(a.by).forEach(function(k){
+    var c=compById(k)||{name:'—'},v=a.by[k];
+    lines.push('• '+c.name+': '+fmtHM(v.mins)+' → $'+fmtARS(v.ars)+' ('+fmtUSD(v.usd)+')');
+  });
+  lines.push('','*TOTAL: $'+fmtARS(a.totArs)+'* ('+fmtUSD(a.totUsd)+' · '+fmtHM(a.totMin)+')');
+  lines.push('Cotización aplicada: $'+(db.config.ars||'—'));
+  window.open('https://wa.me/?text='+encodeURIComponent(lines.join('\n')),'_blank');
+}
+function exportCSV(){
+  var rows=[['Fecha','Empresa','Proyecto','Entrada','Salida','Minutos','Horas (dec)','US$/h','Subtotal USD','Cotización','Subtotal ARS','Estado','Nota']];
+  db.logs.slice().sort(function(a,b){return a.date<b.date?-1:1;}).forEach(function(l){
+    var c=compById(l.compId)||{name:'—'},p=l.projId?projById(l.projId):null;
+    var sgn=l.sign||1;
+    rows.push([l.date,c.name,p?p.name:'Mantenimiento',l.start||'',l.end||'',l.minutes*sgn,(l.minutes*sgn/60).toFixed(2),rateOf(l.compId),logUSD(l).toFixed(2),(l.cotiz||cotizNow()),logARS(l).toFixed(2),l.status,(l.note||'').replace(/[\n;]/g,' ')]);
+  });
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(';');}).join('\n');
+  dl(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),'horas_'+todayStr()+'.csv');
+}
+
+// ====================== MONOTRIBUTO ======================
+function renderMono(){
+  var limit=parseFloat(db.config.monoLimit)||0,el=$('monoBody');
+  if(!limit){el.innerHTML='Elegí tu categoría en <b>Liquidar → Configuración</b> para activar el control.';$('monoCard').style.borderLeftColor='var(--border)';return;}
+  var from=new Date();from.setMonth(from.getMonth()-12);
+  var acum=0;
+  db.logs.forEach(function(l){
+    if(l.status!=='facturado'&&l.status!=='cobrado')return;
+    if(parseLocal(l.date)<from)return;
+    acum+=logARS(l);
+  });
+  var pct=acum/limit*100;
+  var col=pct>=90?'var(--danger)':pct>=70?'var(--warning)':'var(--success)';
+  $('monoCard').style.borderLeftColor=col;
+  el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:baseline"><b class="mono" style="font-size:1.1rem;color:'+col+'">$'+fmtARS(acum)+'</b><span class="muted mono">/ $'+fmtARS(limit)+' (Cat. '+(db.config.monoCat||'?')+')</span></div>'+
+    '<div class="progress-bar"><div class="progress-fill" style="width:'+Math.min(100,pct)+'%;background:'+col+'"></div></div>'+
+    '<div class="muted">'+pct.toFixed(1)+'% del tope · cuenta solo lo facturado/cobrado · orientativo, confirmá con tu contador</div>';
+}
+
+// ====================== PANEL ======================
+function renderDash(){
+  var mk=monthKey(todayStr()),a=monthAgg(mk);
+  $('dashTotalMoney').textContent=fmtARS(a.totArs);
+  $('dashTotalSub').textContent=fmtUSD(a.totUsd)+' · '+fmtHM(a.totMin)+(cotizNow()?'':' — ⚠ cargá la cotización en Liquidar');
+  // hoy / semana
+  var t=todayStr(),today=0,week=0;
+  var mon=new Date();var dd=(mon.getDay()+6)%7;mon.setHours(0,0,0,0);mon.setDate(mon.getDate()-dd);
+  var sun=new Date(mon);sun.setDate(sun.getDate()+7);
+  db.logs.forEach(function(l){
+    var sgn=l.sign||1;
+    if(l.date===t)today+=l.minutes*sgn;
+    var d=parseLocal(l.date);
+    if(d>=mon&&d<sun)week+=l.minutes*sgn;
+  });
+  $('dashToday').textContent=fmtHM(today);$('dashWeek').textContent=fmtHM(week);
+  // alertas: proyectos por vencer + tareas urgentes/vencidas
+  var alerts=[];
+  db.projects.filter(function(p){return p.status!=='terminado'&&p.deadline;}).forEach(function(p){
+    var days=Math.ceil((parseLocal(p.deadline)-new Date())/86400000);
+    if(days<=5){var c=compById(p.compId)||{name:'—',contact:''};
+      alerts.push('<div class="list-card"><b>🏗️ '+esc(p.name)+'</b><div class="muted">'+esc(c.name)+' · '+(days<0?'VENCIDO hace '+(-days)+' días':'vence en '+days+' días')+(c.contact&&c.contact!=='Sin contacto'?' · avisar a <b>'+esc(c.contact)+'</b>':'')+'</div></div>');}
+  });
+  db.tasks.filter(function(tk){return !tk.done;}).forEach(function(tk){
+    var c=compById(tk.compId)||{name:'—'};
+    var days=tk.due?Math.ceil((parseLocal(tk.due)-new Date())/86400000):null;
+    if(days!==null&&days<=3)alerts.push('<div class="list-card"><b>📋 '+esc(tk.text)+'</b><div class="muted">'+esc(c.name)+(tk.who?' · responder a <b>'+esc(tk.who)+'</b>':'')+' · '+(days<0?'VENCIDO':'vence en '+days+' d')+'</div></div>');
+  });
+  $('dashAlertsList').innerHTML=alerts.length?alerts.join(''):'<div class="empty">Nada urgente. 👌</div>';
+  // materiales
+  var mats=db.projects.filter(function(p){return p.status!=='terminado'&&p.materials;}).map(function(p){
+    var c=compById(p.compId)||{name:'—'};
+    return '<div class="list-card"><b>'+esc(p.name)+'</b> <span class="muted">('+esc(c.name)+')</span><div class="muted">🛒 '+esc(p.materials)+'</div>'+
+    '<button class="btn btn-small btn-outline" style="margin-top:6px" onclick="clearMaterials('+p.id+')">✓ Ya comprado</button></div>';
+  });
+  $('dashMaterialsList').innerHTML=mats.length?mats.join(''):'<div class="empty">Nada por comprar.</div>';
+  renderMono();
+}
+
+// ====================== BACKUP ======================
+function dl(blob,name){var u=URL.createObjectURL(blob);var a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+function exportBackup(){dl(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),'horas-trabajadas-backup_'+todayStr()+'.json');}
+function importBackup(input){
+  var f=input.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var p=JSON.parse(r.result);
+      if(!p||(!p.companies&&!p.logs))throw new Error('formato');
+      if(!confirm('Esto reemplaza TODOS los datos actuales por los de la copia. ¿Continuar?'))return;
+      db={config:p.config||{usd:'',ars:'',boss:'',monoCat:'',monoLimit:''},companies:p.companies||[],projects:p.projects||[],tasks:p.tasks||[],logs:p.logs||[]};
+      localStorage.setItem(DB_KEY,JSON.stringify(db));
+      location.reload();
+    }catch(e){alert('No se pudo leer el archivo. Tiene que ser una copia generada por esta app.');}
+  };
+  r.readAsText(f);input.value='';
+}
+// ====================== PWA: funciona sin internet una vez instalada ======================
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>
