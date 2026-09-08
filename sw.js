@@ -1,5 +1,5 @@
 // Horas trabajadas — funcionamiento sin internet
-const CACHE = "horas-v2";
+const CACHE = "horas-v3";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
