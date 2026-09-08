@@ -210,6 +210,17 @@ button.btn-small{padding:7px 10px;font-size:.78rem;width:auto;border-radius:6px}
     <button class="btn btn-outline" style="margin-top:9px" onclick="exportCSV()">📥 Descargar detalle (Excel/CSV)</button>
   </div>
 
+  <div class="card" style="border-left:4px solid var(--danger)">
+    <h2>🗑️ Limpieza</h2>
+    <div class="muted" style="margin-bottom:10px">Hacé una copia de seguridad antes. Nada de esto se puede deshacer.</div>
+    <button class="btn btn-danger" onclick="clearMonthVisits()">Borrar visitas del mes elegido arriba</button>
+    <div class="grid-2" style="margin-top:9px">
+      <button class="btn btn-outline" onclick="clearDoneProjects()">Borrar obras terminadas</button>
+      <button class="btn btn-outline" onclick="clearDoneTasks()">Borrar pendientes hechos</button>
+    </div>
+    <div class="muted" style="margin-top:9px">Para borrar una obra o un pendiente puntual, usá la ✕ en la ficha de la empresa.</div>
+  </div>
+
   <div class="card" style="border-left:4px solid var(--success)">
     <h2>💾 Copia de seguridad</h2>
     <div class="muted" style="margin-bottom:10px">Bajá un archivo con TODO y restauralo en otro dispositivo. Guardalo en tu Drive.</div>
@@ -470,9 +481,17 @@ function renderCompanies(){
       '<div class="grid-2"><button class="btn btn-success" onclick="saveTask('+c.id+')">Guardar</button><button class="btn btn-outline" onclick="showForm(null,'+c.id+')">Cancelar</button></div></div>':'';
 
     // últimas visitas
-    var lastVis=vis.sort(function(a,b){return a.date<b.date?1:-1;}).slice(0,5).map(function(v){
-      return '<div class="sub-box"><b>'+v.date+'</b> · '+fmtHM(v.minutes*(v.sign||1))+
-        (v.items&&v.items.length?'<div class="muted">'+v.items.map(function(i){return esc(itemLabel(i))+(i.text?': '+esc(i.text):'');}).join(' · ')+'</div>':'')+'</div>';
+    var lastVis=vis.sort(function(a,b){return a.date<b.date?1:-1;}).slice(0,8).map(function(v){
+      var lines=(v.items||[]).length
+        ? (v.items||[]).map(function(i){return '<div class="muted">• <b>'+esc(itemLabel(i))+'</b>'+(i.text?': '+esc(i.text):'')+'</div>';}).join('')
+        : '<div class="muted" style="font-style:italic">Sin detalle anotado.</div>';
+      return '<div class="sub-box"><div class="list-head"><div><b>'+v.date+'</b> · '+fmtHM(v.minutes*(v.sign||1))+
+        (v.start&&v.end?' <span class="muted">('+v.start+'–'+v.end+')</span>':'')+'</div>'+statusBadge(v.status)+'</div>'+
+        lines+
+        '<div class="row-flex" style="margin-top:7px">'+
+        '<button class="btn btn-small btn-outline" onclick="goToVisit('+v.id+')">✎ Ver / editar</button>'+
+        '<button class="btn btn-small btn-danger" style="margin-left:auto" onclick="delVisit('+v.id+')">✕ Borrar</button>'+
+        '</div></div>';
     }).join('')||'<div class="empty">Sin visitas.</div>';
 
     return '<div class="card">'+head+
@@ -541,6 +560,20 @@ function addManualVisit(){
   saveDB();
 }
 function toggleVisit(id){openVisit=(openVisit===id?null:id);editVisitId=null;renderVisits();}
+function goToVisit(id){
+  var v=visitById(id); if(!v)return;
+  openVisit=id; editVisitId=null;
+  $('visMonth').value=monthKey(v.date);
+  document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');});
+  $('tab-visitas').classList.add('active');
+  document.querySelectorAll('.nav-item')[1].classList.add('active');
+  refreshAllUI();
+  setTimeout(function(){
+    var el=document.getElementById('v'+id);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  },100);
+}
 function delVisit(id){if(!confirm('¿Eliminar la visita completa?'))return;db.visits=db.visits.filter(function(v){return v.id!=id;});openVisit=null;saveDB();}
 function cycleVisitStatus(id){
   var v=visitById(id);if(!v)return;
@@ -621,7 +654,7 @@ function renderVisits(){
             '<button class="btn btn-small btn-danger" style="margin-left:auto" onclick="delVisit('+v.id+')">✕ Borrar</button></div>';
         }
       }
-      html+='<div class="card" style="margin-bottom:10px"><div class="list-head"><div>'+
+      html+='<div class="card" id="v'+v.id+'" style="margin-bottom:10px"><div class="list-head"><div>'+
         '<div class="list-title">'+esc(c.name)+'</div>'+
         '<div class="muted">'+(v.start&&v.end?v.start+'–'+v.end+' · ':'')+'<b>'+fmtHM(v.minutes*(v.sign||1))+'</b> · '+((v.items||[]).length)+' trabajo(s)</div>'+
         '</div><div style="text-align:right">'+statusBadge(v.status)+'<div class="muted mono">$'+fmtARS(vARS(v))+'</div>'+
@@ -680,6 +713,29 @@ function exportCSV(){
   });
   var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(';');}).join('\n');
   dl(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),'visitas_'+todayStr()+'.csv');
+}
+
+// ====================== LIMPIEZA ======================
+function clearMonthVisits(){
+  var mk=val('liqMonth')||monthKey(todayStr());
+  var n=db.visits.filter(function(v){return monthKey(v.date)===mk;}).length;
+  if(!n)return alert('No hay visitas en '+mk+'.');
+  if(!confirm('¿Borrar las '+n+' visita(s) de '+mk+'?\n\nSe borran las visitas y lo anotado en ellas. Las empresas, obras y pendientes quedan intactos.\n\nEsto no se puede deshacer.'))return;
+  db.visits=db.visits.filter(function(v){return monthKey(v.date)!==mk;});
+  openVisit=null;saveDB();
+  alert('Listo: se borraron '+n+' visita(s) de '+mk+'.');
+}
+function clearDoneProjects(){
+  var n=db.projects.filter(function(p){return p.status==='terminado';}).length;
+  if(!n)return alert('No hay obras terminadas.');
+  if(!confirm('¿Borrar las '+n+' obra(s) terminada(s)? No se puede deshacer.'))return;
+  db.projects=db.projects.filter(function(p){return p.status!=='terminado';});saveDB();
+}
+function clearDoneTasks(){
+  var n=db.tasks.filter(function(t){return t.done;}).length;
+  if(!n)return alert('No hay pendientes completados.');
+  if(!confirm('¿Borrar los '+n+' pendiente(s) completado(s)? No se puede deshacer.'))return;
+  db.tasks=db.tasks.filter(function(t){return !t.done;});saveDB();
 }
 
 // ====================== CALENDARIO / WHATSAPP ======================
