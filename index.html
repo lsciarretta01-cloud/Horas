@@ -82,7 +82,7 @@ button.btn-small{padding:7px 10px;font-size:.78rem;width:auto;border-radius:6px}
 
 <!-- ============ PANEL ============ -->
 <div id="tab-dash" class="tab-content active">
-  <h2>📊 Panel <span style="font-size:.62rem;font-weight:600;color:var(--text-light);background:#f1f5f9;padding:3px 7px;border-radius:20px">v3.1</span></h2>
+  <h2>📊 Panel <span style="font-size:.62rem;font-weight:600;color:var(--text-light);background:#f1f5f9;padding:3px 7px;border-radius:20px">v3.2</span></h2>
   <div id="backupBanner"></div>
   <div class="dash-box dash-finance">
     <div>A facturar este mes</div>
@@ -244,7 +244,17 @@ var openVisit=null, openComp=null, formKind=null, editVisitId=null;
   db.config=db.config||{}; db.companies=db.companies||[]; db.projects=db.projects||[];
   db.tasks=db.tasks||[]; db.visits=db.visits||null;
   if(!db.types||!db.types.length)
-    db.types=[{id:1,name:'Mantenimiento general'},{id:2,name:'Relevamiento'},{id:3,name:'Programación'},{id:4,name:'Asesoramiento'}];
+    db.types=[{id:1,name:'Mantenimiento general'},{id:2,name:'Relevamiento'},{id:3,name:'Programación'},{id:4,name:'Asesoramiento'},{id:5,name:'Supervisión'},{id:6,name:'Asistencia'}];
+  // completa los tipos nuevos una sola vez; si después los borrás, no vuelven
+  if(!db.config.typesV32){
+    [[5,'Supervisión'],[6,'Asistencia']].forEach(function(t){
+      var existe=db.types.some(function(x){
+        return x.id===t[0] || String(x.name).trim().toLowerCase()===t[1].toLowerCase();
+      });
+      if(!existe) db.types.push({id:t[0],name:t[1]});
+    });
+    db.config.typesV32=true;
+  }
   db.companies.forEach(function(c){
     if(!c.contacts){c.contacts=[];
       if(c.contact&&c.contact!=='Sin contacto')c.contacts.push({id:Date.now()+Math.random(),name:c.contact,role:'',phone:'',email:''});
