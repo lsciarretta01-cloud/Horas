@@ -69,6 +69,10 @@ button.btn-small{padding:7px 10px;font-size:.78rem;width:auto;border-radius:6px}
 .visit-line{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--border)}
 .visit-line:last-child{border-bottom:none}
 .day-head{display:flex;justify-content:space-between;padding:8px 11px;background:#f1f5f9;border-radius:8px;font-weight:700;font-size:.85rem;margin-bottom:8px}
+.check-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px}
+.check-item{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:20px;padding:8px 12px;font-size:.85rem;font-weight:600;margin:0;color:var(--text)}
+.check-item input{width:17px;height:17px;margin:0;accent-color:var(--primary)}
+.check-item:has(input:checked){background:#f0fdfa;border-color:var(--primary);color:var(--primary)}
 </style>
 </head>
 <body>
@@ -82,7 +86,7 @@ button.btn-small{padding:7px 10px;font-size:.78rem;width:auto;border-radius:6px}
 
 <!-- ============ PANEL ============ -->
 <div id="tab-dash" class="tab-content active">
-  <h2>📊 Panel <span style="font-size:.62rem;font-weight:600;color:var(--text-light);background:#f1f5f9;padding:3px 7px;border-radius:20px">v3.2</span></h2>
+  <h2>📊 Panel <span style="font-size:.62rem;font-weight:600;color:var(--text-light);background:#f1f5f9;padding:3px 7px;border-radius:20px">v3.6</span></h2>
   <div id="backupBanner"></div>
   <div class="dash-box dash-finance">
     <div>A facturar este mes</div>
@@ -98,7 +102,7 @@ button.btn-small{padding:7px 10px;font-size:.78rem;width:auto;border-radius:6px}
     <div id="monoBody" class="muted"></div>
   </div>
   <div class="card" style="border-left:4px solid var(--danger)">
-    <h3>⚠️ Vencimientos y pendientes urgentes</h3>
+    <h3>📋 Pendientes y vencimientos</h3>
     <div id="dashAlertsList" class="item-list"></div>
     <button class="btn btn-outline btn-small" style="margin-top:10px" onclick="waPendientes()">💬 Mandarme los pendientes por WhatsApp</button>
   </div>
@@ -118,7 +122,7 @@ button.btn-small{padding:7px 10px;font-size:.78rem;width:auto;border-radius:6px}
     <div id="timerWho" class="muted" style="text-align:center;margin-top:-8px;margin-bottom:10px"></div>
     <button id="btnPlay" class="btn btn-success" onclick="startTimer()">▶ Llegué / Iniciar visita</button>
     <button id="btnStop" class="btn btn-danger" style="display:none" onclick="stopTimer()">⏹ Me voy / Cerrar visita</button>
-    <div class="muted" style="margin-top:9px">Al cerrar la visita anotás qué hiciste.</div>
+    <div id="liveVisitBox"></div>
   </div>
 
   <div class="card">
@@ -200,14 +204,17 @@ button.btn-small{padding:7px 10px;font-size:.78rem;width:auto;border-radius:6px}
     <h2>💰 Liquidación mensual</h2>
     <label>Mes a liquidar</label>
     <input type="month" id="liqMonth" onchange="refreshAllUI()">
+    <div id="liqCobrado" class="dash-box" style="background:linear-gradient(135deg,#0f766e,#14b8a6);margin-top:6px"></div>
     <div id="liqSummary" style="margin-top:12px;font-size:.9rem"></div>
     <div class="dash-box dash-finance" style="margin-top:13px">
-      TOTAL: $<span id="liqTotalStr" class="mono">0</span> ARS
+      TOTAL DEL MES: $<span id="liqTotalStr" class="mono">0</span> ARS
       <div class="dash-sub" id="liqTotalUsd"></div>
     </div>
     <div id="liqEstados" class="grid-3" style="margin-bottom:12px"></div>
-    <button class="btn btn-success" onclick="sendWhatsApp()">💬 Enviar resumen por WhatsApp</button>
-    <button class="btn btn-outline" style="margin-top:9px" onclick="exportCSV()">📥 Descargar detalle (Excel/CSV)</button>
+    <button id="btnXlsx" class="btn btn-success" onclick="exportMonthXLSX()">📊 Excel de cierre del mes</button>
+    <div class="muted" style="margin:6px 0 10px">Una hoja Resumen y una hoja por empresa. Usa la venta del dólar del último día trabajado del mes (la busca en internet).</div>
+    <button class="btn btn-outline" onclick="sendWhatsApp()">💬 Enviar resumen por WhatsApp</button>
+    <button class="btn btn-outline" style="margin-top:9px" onclick="exportCSV()">📥 CSV de todas las visitas</button>
   </div>
 
   <div class="card" style="border-left:4px solid var(--danger)">
@@ -297,7 +304,16 @@ function cotizNow(){return parseFloat(db.config.ars)||0;}
 function vUSD(v){return (v.minutes/60)*rateOf(v.compId)*(v.sign||1);}
 function vARS(v){var c=v.cotiz&&v.cotiz>0?v.cotiz:cotizNow();return vUSD(v)*c;}
 function phoneDigits(p){var d=String(p||'').replace(/\D/g,'');if(!d)return '';if(d.indexOf('54')!==0)d='54'+d.replace(/^0/,'');return d;}
-function itemLabel(it){ if(it.projId){var p=projById(it.projId);return p?p.name:'Obra eliminada';} var t=typeById(it.typeId);return t?t.name:'Trabajo';}
+function itemTypeIds(it){
+  if(it.typeIds&&it.typeIds.length)return it.typeIds;
+  return it.typeId?[it.typeId]:[];
+}
+function itemLabel(it){
+  var parts=[];
+  if(it.projId){var p=projById(it.projId);parts.push(p?p.name:'Obra eliminada');}
+  itemTypeIds(it).forEach(function(id){var t=typeById(id);if(t)parts.push(t.name);});
+  return parts.length?parts.join(' + '):'Trabajo';
+}
 function val(id){var e=$(id);return e?e.value:'';}
 
 // ====================== INIT ======================
@@ -327,7 +343,7 @@ function pickMonoCat(){
   for(var i=0;i<MONO.length;i++) if(MONO[i][0]===cat) $('cfgMonoLimit').value=MONO[i][1];
   saveConfig();
 }
-function refreshAllUI(){renderSelects();renderTypes();renderCompanies();renderVisits();renderDash();renderLiq();renderBackupInfo();}
+function refreshAllUI(){renderSelects();renderTypes();renderCompanies();renderVisits();renderDash();renderLiq();renderBackupInfo();renderLiveVisit();}
 function fetchCotiz(){
   $('cotizMsg').textContent='Buscando…';
   fetch('https://dolarapi.com/v1/dolares/oficial').then(function(r){return r.json();}).then(function(j){
@@ -521,8 +537,13 @@ function renderCompanies(){
 // ====================== VISITAS ======================
 function startTimer(){
   var cid=val('timeCompSelect'); if(!cid)return alert('Elegí la empresa primero');
-  activeTimer={start:Date.now(),compId:+cid};
-  localStorage.setItem(TIMER_KEY,JSON.stringify(activeTimer)); startTimerUI();
+  var now=new Date();
+  var v={id:Date.now(),compId:+cid,date:todayStr(),start:pad(now.getHours())+':'+pad(now.getMinutes()),
+    end:'',minutes:0,sign:1,cotiz:cotizNow(),status:'pendiente',items:[]};
+  db.visits.push(v);
+  activeTimer={start:Date.now(),compId:+cid,visitId:v.id};
+  localStorage.setItem(TIMER_KEY,JSON.stringify(activeTimer));
+  saveDB(); startTimerUI();
 }
 function startTimerUI(){
   $('btnPlay').style.display='none';$('btnStop').style.display='flex';
@@ -531,7 +552,24 @@ function startTimerUI(){
   var ref=(c&&c.contacts&&c.contacts[0])?' · '+c.contacts[0].name:'';
   $('timerWho').textContent=c?('En '+c.name+ref):'';
   if($('timeCompSelect').value!=String(activeTimer.compId))$('timeCompSelect').value=activeTimer.compId;
-  tick(); timerInterval=setInterval(tick,1000);
+  renderLiveVisit();
+  tick(); if(timerInterval)clearInterval(timerInterval); timerInterval=setInterval(tick,1000);
+}
+function renderLiveVisit(){
+  var box=$('liveVisitBox'); if(!box)return;
+  if(!activeTimer||!activeTimer.visitId){box.innerHTML='<div class="muted" style="margin-top:9px">Podés ir anotando el trabajo mientras dura la visita.</div>';return;}
+  var v=visitById(activeTimer.visitId);
+  if(!v){box.innerHTML='';return;}
+  var items=(v.items||[]).map(function(i){
+    return '<div class="visit-line"><div style="flex:1"><b>'+esc(itemLabel(i))+'</b>'+(i.text?'<div class="muted">'+esc(i.text)+'</div>':'')+'</div>'+
+      '<button class="btn btn-small btn-outline" onclick="itemToTask('+v.id+','+i.id+')" title="Convertir en pendiente">📋</button>'+
+      '<button class="btn btn-small btn-danger" onclick="delItem('+v.id+','+i.id+')">✕</button></div>';
+  }).join('')||'<div class="empty">Todavía no anotaste nada.</div>';
+  box.innerHTML='<div class="sec-title">📝 Anotá mientras trabajás</div>'+items+
+    '<div class="form-box"><label>Obra (opcional)</label>'+obraOptions(v.compId)+
+    '<label>Tipo de trabajo (podés marcar varios)</label>'+typeChecks()+
+    '<input id="itText" placeholder="Qué hiciste o qué querés recordar">'+
+    '<button class="btn btn-success" onclick="addItem('+v.id+')">+ Anotar ahora</button></div>';
 }
 function tick(){
   if(!activeTimer)return;
@@ -541,16 +579,18 @@ function tick(){
 function stopTimer(){
   if(!activeTimer)return;
   var mins=Math.max(1,Math.round((Date.now()-activeTimer.start)/60000));
-  var sD=new Date(activeTimer.start),eD=new Date();
-  var v={id:Date.now(),compId:activeTimer.compId,date:todayStr(),start:pad(sD.getHours())+':'+pad(sD.getMinutes()),
-    end:pad(eD.getHours())+':'+pad(eD.getMinutes()),minutes:mins,sign:1,cotiz:cotizNow(),status:'pendiente',items:[]};
-  db.visits.push(v);
-  activeTimer=null;localStorage.removeItem(TIMER_KEY);clearInterval(timerInterval);
+  var v=visitById(activeTimer.visitId);
+  if(v){
+    var e=new Date();
+    v.end=pad(e.getHours())+':'+pad(e.getMinutes());
+    v.minutes=mins; v.cotiz=v.cotiz||cotizNow();
+    openVisit=v.id; $('visMonth').value=monthKey(v.date);
+  }
+  activeTimer=null;localStorage.removeItem(TIMER_KEY);clearInterval(timerInterval);timerInterval=null;
   $('btnPlay').style.display='flex';$('btnStop').style.display='none';
   $('timerValue').classList.remove('timer-active');$('timerValue').textContent='00:00:00';$('timerWho').textContent='';
-  openVisit=v.id; $('visMonth').value=monthKey(v.date);
   saveDB();
-  alert('Visita cerrada: '+fmtHM(mins)+'. Ahora anotá qué hiciste.');
+  alert('Visita cerrada: '+fmtHM(mins)+'.');
 }
 function calcMan(){
   var a=val('manStart'),b=val('manEnd'); if(!a||!b)return;
@@ -599,10 +639,14 @@ function saveEditVisit(id){
 }
 function addItem(vid){
   var v=visitById(vid);if(!v)return;
-  var jv=val('itJob'),txt=val('itText').trim();
-  var it={id:Date.now(),typeId:0,projId:0,text:txt};
-  if(jv.charAt(0)==='p')it.projId=+jv.slice(1); else it.typeId=+jv.slice(1);
-  v.items=v.items||[];v.items.push(it);saveDB();
+  var txt=val('itText').trim();
+  var proj=+val('itProj')||0;
+  var ids=[];
+  document.querySelectorAll('.itType:checked').forEach(function(c){ids.push(+c.value);});
+  if(!proj&&!ids.length&&!txt)return alert('Marcá al menos un tipo de trabajo, una obra, o escribí el detalle.');
+  v.items=v.items||[];
+  v.items.push({id:Date.now(),typeIds:ids,projId:proj,text:txt});
+  saveDB();
 }
 function delItem(vid,iid){
   var v=visitById(vid);if(!v)return;
@@ -615,11 +659,16 @@ function itemToTask(vid,iid){
   db.tasks.push({id:Date.now(),compId:v.compId,text:it.text||itemLabel(it),who:who,due:'',done:false});
   saveDB();alert('Pendiente creado. Lo ves en la ficha de la empresa y en el Panel.');
 }
-function jobOptions(compId){
-  var o='<optgroup label="Tipo de trabajo">'+db.types.map(function(t){return '<option value="t'+t.id+'">🔧 '+esc(t.name)+'</option>';}).join('')+'</optgroup>';
+function obraOptions(compId){
   var pr=db.projects.filter(function(p){return p.compId==compId&&p.status!=='terminado';});
-  if(pr.length)o+='<optgroup label="Obras">'+pr.map(function(p){return '<option value="p'+p.id+'">🏗️ '+esc(p.name)+'</option>';}).join('')+'</optgroup>';
-  return o;
+  if(!pr.length)return '<div class="muted" style="margin-bottom:10px">Esta empresa no tiene obras activas.</div>';
+  return '<select id="itProj"><option value="">— Sin obra —</option>'+
+    pr.map(function(p){return '<option value="'+p.id+'">🏗️ '+esc(p.name)+'</option>';}).join('')+'</select>';
+}
+function typeChecks(){
+  return '<div class="check-grid">'+db.types.map(function(t){
+    return '<label class="check-item"><input type="checkbox" class="itType" value="'+t.id+'"> '+esc(t.name)+'</label>';
+  }).join('')+'</div>';
 }
 function statusBadge(s){return s==='cobrado'?'<span class="badge badge-success">Cobrado</span>':s==='facturado'?'<span class="badge badge-info">Facturado</span>':'<span class="badge badge-gray">Pendiente</span>';}
 function renderVisits(){
@@ -656,7 +705,8 @@ function renderVisits(){
             '<button class="btn btn-outline" onclick="startEditVisit(0)">Cancelar</button></div></div>';
         }else{
           body='<div class="sec-title">Qué hicimos</div>'+items+
-            '<div class="form-box"><label>Trabajo</label><select id="itJob">'+jobOptions(v.compId)+'</select>'+
+            '<div class="form-box"><label>Obra (opcional)</label>'+obraOptions(v.compId)+
+            '<label>Tipo de trabajo (podés marcar varios)</label>'+typeChecks()+
             '<input id="itText" placeholder="Detalle: qué hiciste">'+
             '<button class="btn btn-success" onclick="addItem('+v.id+')">+ Anotar</button></div>'+
             '<div class="row-flex"><button class="btn btn-small btn-outline" onclick="cycleVisitStatus('+v.id+')">Estado</button>'+
@@ -664,9 +714,10 @@ function renderVisits(){
             '<button class="btn btn-small btn-danger" style="margin-left:auto" onclick="delVisit('+v.id+')">✕ Borrar</button></div>';
         }
       }
-      html+='<div class="card" id="v'+v.id+'" style="margin-bottom:10px"><div class="list-head"><div>'+
-        '<div class="list-title">'+esc(c.name)+'</div>'+
-        '<div class="muted">'+(v.start&&v.end?v.start+'–'+v.end+' · ':'')+'<b>'+fmtHM(v.minutes*(v.sign||1))+'</b> · '+((v.items||[]).length)+' trabajo(s)</div>'+
+      var enCurso=activeTimer&&activeTimer.visitId===v.id;
+      html+='<div class="card" id="v'+v.id+'" style="margin-bottom:10px'+(enCurso?';border:2px solid var(--success)':'')+'"><div class="list-head"><div>'+
+        '<div class="list-title">'+esc(c.name)+(enCurso?' <span class="badge badge-success">EN CURSO</span>':'')+'</div>'+
+        '<div class="muted">'+(v.start?v.start+(v.end?'–'+v.end:'– en curso')+' · ':'')+'<b>'+(enCurso?'contando…':fmtHM(v.minutes*(v.sign||1)))+'</b> · '+((v.items||[]).length)+' trabajo(s)</div>'+
         '</div><div style="text-align:right">'+statusBadge(v.status)+'<div class="muted mono">$'+fmtARS(vARS(v))+'</div>'+
         '<button class="btn btn-small btn-outline" style="margin-top:5px" onclick="toggleVisit('+v.id+')">'+(open?'▲':'▼')+'</button></div></div>'+body+'</div>';
     });
@@ -676,16 +727,17 @@ function renderVisits(){
 
 // ====================== LIQUIDACIÓN ======================
 function monthAgg(mk){
-  var by={},totMin=0,totUsd=0,totArs=0,est={pendiente:0,facturado:0,cobrado:0};
+  var by={},totMin=0,totUsd=0,totArs=0,cobUsd=0,cobMin=0,est={pendiente:0,facturado:0,cobrado:0};
   db.visits.forEach(function(v){
     if(monthKey(v.date)!==mk)return;
     var k=v.compId,s=v.sign||1;
+    if((v.status||'pendiente')==='cobrado'){cobUsd+=vUSD(v);cobMin+=v.minutes*s;}
     if(!by[k])by[k]={mins:0,usd:0,ars:0,n:0};
     by[k].mins+=v.minutes*s;by[k].usd+=vUSD(v);by[k].ars+=vARS(v);by[k].n++;
     totMin+=v.minutes*s;totUsd+=vUSD(v);totArs+=vARS(v);
     est[v.status||'pendiente']+=vARS(v);
   });
-  return {by:by,totMin:totMin,totUsd:totUsd,totArs:totArs,est:est};
+  return {by:by,totMin:totMin,totUsd:totUsd,totArs:totArs,est:est,cobUsd:cobUsd,cobMin:cobMin};
 }
 function renderLiq(){
   var mk=val('liqMonth')||monthKey(todayStr()),a=monthAgg(mk),html='';
@@ -698,6 +750,11 @@ function renderLiq(){
   $('liqSummary').innerHTML=html||'<div class="empty">Sin visitas en el mes elegido.</div>';
   $('liqTotalStr').textContent=fmtARS(a.totArs);
   $('liqTotalUsd').textContent=fmtUSD(a.totUsd)+' · '+fmtHM(a.totMin);
+  var cob=a.est.cobrado;
+  $('liqCobrado').innerHTML='<div style="font-size:.85rem;opacity:.95">💵 Cobrado en '+monthLabel(mk)+'</div>'+
+    '<div class="dash-number">$'+fmtARS(cob)+'</div>'+
+    '<div class="dash-sub">'+fmtUSD(a.cobUsd)+' · '+fmtHM(a.cobMin)+'</div>'+
+    (cob===0&&a.totArs>0?'<div class="dash-sub">Todavía no marcaste visitas como Cobrado en este mes (botón Estado en cada visita).</div>':'');
   $('liqEstados').innerHTML=['pendiente','facturado','cobrado'].map(function(s){
     return '<div class="card" style="margin:0;padding:9px;text-align:center"><div class="muted" style="font-size:.7rem;text-transform:uppercase">'+s+'</div><div class="mono" style="font-weight:bold">$'+fmtARS(a.est[s])+'</div></div>';
   }).join('');
@@ -723,6 +780,252 @@ function exportCSV(){
   });
   var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(';');}).join('\n');
   dl(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),'visitas_'+todayStr()+'.csv');
+}
+
+// ====================== EXCEL (.xlsx generado dentro de la app, sin librerías) ======================
+var MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+function monthLabel(mk){var p=String(mk).split('-');return (MESES[(+p[1])-1]||p[1])+' '+p[0];}
+
+function xlCol(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+function xmlEsc(s){return String(s==null?'':s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+var XL_NUMFMTS=[[164,'dd/mm/yyyy'],[165,'[h]:mm'],[166,'"US$" #,##0.00'],[167,'"$" #,##0.00']];
+// [clave, numFmt, fuente, relleno, borde, ajustar texto, alineación horizontal]
+var XL_STYLES=[
+  ['n',0,0,0,0,0,''],['title',0,2,0,0,0,''],['bold',0,1,0,0,0,''],['boldr',0,1,0,0,0,'right'],
+  ['head',0,3,2,0,1,'center'],['date',164,0,0,0,0,'left'],['hm',165,0,0,0,0,''],['dec',2,0,0,0,0,''],
+  ['int',1,0,0,0,0,''],['usd',166,0,0,0,0,''],['ars',167,0,0,0,0,''],['cot',4,0,0,0,0,''],['wrap',0,0,0,0,1,''],
+  ['tot',0,1,3,1,0,''],['tothm',165,1,3,1,0,''],['totdec',2,1,3,1,0,''],['totint',1,1,3,1,0,''],
+  ['totusd',166,1,3,1,0,''],['totars',167,1,3,1,0,''],['input',167,1,4,0,0,'']
+];
+function xlStyleIndex(key){for(var i=0;i<XL_STYLES.length;i++)if(XL_STYLES[i][0]===key)return i;return 0;}
+
+function xlStylesXml(){
+  var x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+  '<numFmts count="'+XL_NUMFMTS.length+'">'+XL_NUMFMTS.map(function(n){return '<numFmt numFmtId="'+n[0]+'" formatCode="'+xmlEsc(n[1])+'"/>';}).join('')+'</numFmts>'+
+  '<fonts count="4">'+
+  '<font><sz val="10"/><name val="Arial"/></font>'+
+  '<font><b/><sz val="10"/><name val="Arial"/></font>'+
+  '<font><b/><sz val="14"/><name val="Arial"/></font>'+
+  '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font></fonts>'+
+  '<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'+
+  '<fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill>'+
+  '<fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill>'+
+  '<fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/><bgColor indexed="64"/></patternFill></fill></fills>'+
+  '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>'+
+  '<border><left/><right/><top style="thin"><color rgb="FF64748B"/></top><bottom/><diagonal/></border></borders>'+
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+  '<cellXfs count="'+XL_STYLES.length+'">'+XL_STYLES.map(function(s){
+    return '<xf numFmtId="'+s[1]+'" fontId="'+s[2]+'" fillId="'+s[3]+'" borderId="'+s[4]+'" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">'+
+      '<alignment vertical="'+(s[0]==='head'?'center':'top')+'"'+(s[6]?' horizontal="'+s[6]+'"':'')+(s[5]?' wrapText="1"':'')+'/></xf>';
+  }).join('')+'</cellXfs>'+
+  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  return x;
+}
+
+function xlSheetXml(sh){
+  var cols=(sh.cols&&sh.cols.length)?'<cols>'+sh.cols.map(function(w,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>';}).join('')+'</cols>':'';
+  var rows=sh.rows.map(function(row,ri){
+    var cells=row.map(function(c,ci){
+      if(c===null||c===undefined||c==='')return '';
+      if(typeof c!=='object')c={v:c};
+      var ref=xlCol(ci)+(ri+1),s=xlStyleIndex(c.s||'n');
+      if(c.f!==undefined){
+        return '<c r="'+ref+'" s="'+s+'"><f>'+xmlEsc(c.f)+'</f><v>'+(isFinite(c.v)?c.v:0)+'</v></c>';
+      }
+      if(c.v===undefined||c.v===null||c.v==='')return '<c r="'+ref+'" s="'+s+'"/>';
+      if(typeof c.v==='number')return '<c r="'+ref+'" s="'+s+'"><v>'+c.v+'</v></c>';
+      return '<c r="'+ref+'" s="'+s+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(c.v)+'</t></is></c>';
+    }).join('');
+    return cells?'<row r="'+(ri+1)+'">'+cells+'</row>':'';
+  }).join('');
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0"/></sheetViews>'+
+    '<sheetFormatPr defaultRowHeight="14"/>'+cols+'<sheetData>'+rows+'</sheetData>'+
+    '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>';
+}
+
+var XL_CRC=null;
+function crc32(b){
+  if(!XL_CRC){XL_CRC=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);XL_CRC[n]=c>>>0;}}
+  var crc=0xFFFFFFFF;for(var i=0;i<b.length;i++)crc=XL_CRC[(crc^b[i])&0xFF]^(crc>>>8);
+  return (crc^0xFFFFFFFF)>>>0;
+}
+function zipStore(files){
+  var enc=new TextEncoder(),parts=[],central=[],offset=0;
+  files.forEach(function(f){
+    var name=enc.encode(f.name),data=enc.encode(f.text),crc=crc32(data);
+    var lh=new Uint8Array(30+name.length),dv=new DataView(lh.buffer);
+    dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0x0800,true);dv.setUint16(8,0,true);
+    dv.setUint16(10,0,true);dv.setUint16(12,0x0021,true);dv.setUint32(14,crc,true);dv.setUint32(18,data.length,true);
+    dv.setUint32(22,data.length,true);dv.setUint16(26,name.length,true);dv.setUint16(28,0,true);lh.set(name,30);
+    parts.push(lh,data);
+    var ch=new Uint8Array(46+name.length),cv=new DataView(ch.buffer);
+    cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint16(8,0x0800,true);
+    cv.setUint16(10,0,true);cv.setUint16(12,0,true);cv.setUint16(14,0x0021,true);cv.setUint32(16,crc,true);
+    cv.setUint32(20,data.length,true);cv.setUint32(24,data.length,true);cv.setUint16(28,name.length,true);
+    cv.setUint16(30,0,true);cv.setUint16(32,0,true);cv.setUint16(34,0,true);cv.setUint16(36,0,true);
+    cv.setUint32(38,0,true);cv.setUint32(42,offset,true);ch.set(name,46);
+    central.push(ch);offset+=lh.length+data.length;
+  });
+  var cdSize=0;central.forEach(function(c){cdSize+=c.length;});
+  var end=new Uint8Array(22),ev=new DataView(end.buffer);
+  ev.setUint32(0,0x06054b50,true);ev.setUint16(4,0,true);ev.setUint16(6,0,true);ev.setUint16(8,files.length,true);
+  ev.setUint16(10,files.length,true);ev.setUint32(12,cdSize,true);ev.setUint32(16,offset,true);ev.setUint16(20,0,true);
+  var all=parts.concat(central,[end]),total=0;all.forEach(function(p){total+=p.length;});
+  var out=new Uint8Array(total),pos=0;all.forEach(function(p){out.set(p,pos);pos+=p.length;});
+  return out;
+}
+function xlsxBuild(sheets){
+  var X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  var files=[];
+  files.push({name:'[Content_Types].xml',text:X+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'+
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+
+    sheets.map(function(s,i){return '<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';}).join('')+'</Types>'});
+  files.push({name:'_rels/.rels',text:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'});
+  files.push({name:'xl/workbook.xml',text:X+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+    '<sheets>'+sheets.map(function(s,i){return '<sheet name="'+xmlEsc(s.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>';}).join('')+'</sheets>'+
+    '<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>'});
+  files.push({name:'xl/_rels/workbook.xml.rels',text:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    sheets.map(function(s,i){return '<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>';}).join('')+
+    '<Relationship Id="rId'+(sheets.length+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'});
+  files.push({name:'xl/styles.xml',text:xlStylesXml()});
+  sheets.forEach(function(s,i){files.push({name:'xl/worksheets/sheet'+(i+1)+'.xml',text:xlSheetXml(s)});});
+  return zipStore(files);
+}
+
+function xlSheetName(name,used){
+  var base=String(name||'Empresa').replace(/[\\\/\?\*\[\]:']/g,'').replace(/\s+/g,' ').trim().slice(0,31)||'Empresa';
+  var nm=base,i=2;
+  while(used[nm.toLowerCase()]){var suf=' '+i;nm=base.slice(0,31-suf.length)+suf;i++;}
+  used[nm.toLowerCase()]=1;return nm;
+}
+function xlHM(m){var t=Math.abs(Math.round(m));return (m<0?'-':'')+Math.floor(t/60)+':'+pad(t%60);}
+function xlDateSerial(s){var p=s.split('-');return Math.round((Date.UTC(+p[0],+p[1]-1,+p[2])-Date.UTC(1899,11,30))/86400000);}
+
+// Arma las hojas del mes: "Resumen" + una hoja por empresa. Una sola cotización (venta) para todo el mes.
+// c = {venta, fecha 'AAAA-MM-DD', fuente 'internet'|'guardada'}
+function fmtFecha(s){var p=String(s).split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+function buildMonthWorkbook(mk,c){
+  var vs=db.visits.filter(function(v){return monthKey(v.date)===mk;});
+  if(!vs.length)return null;
+  c=c||{venta:cotizNow(),fecha:'',fuente:'guardada'};
+  var cot=+c.venta||0;
+  vs.sort(function(a,b){return a.date===b.date?((a.start||'')<(b.start||'')?-1:1):(a.date<b.date?-1:1);});
+  var groups={},order=[];
+  vs.forEach(function(v){var k=String(v.compId);if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(v);});
+  function cname(k){return (compById(k)||{name:'Sin empresa'}).name;}
+  order.sort(function(a,b){var x=cname(a).toLowerCase(),y=cname(b).toLowerCase();return x<y?-1:x>y?1:0;});
+
+  var used={'resumen':1},compSheets=[];
+  var HEAD=['Fecha','Entrada','Salida','Horas (h:mm)','Horas (decimal)','Trabajos realizados','US$','Pesos (ARS)','Cotización'];
+
+  order.forEach(function(k){
+    var list=groups[k],nm=xlSheetName(cname(k),used),rate=rateOf(+k);
+    var first=6,last=first+list.length-1,tot=last+1;
+    var rows=[];
+    rows.push([{v:cname(k)+' — '+monthLabel(mk),s:'title'}]);
+    rows.push([{v:'US$/hora',s:'bold'},{v:rate,s:'usd'}]);
+    rows.push([{v:'Cotización US$',s:'bold'},{f:'Resumen!$B$3',v:cot,s:'ars'},{v:'← se cambia en la hoja Resumen',s:'n'}]);
+    rows.push([]);
+    rows.push(HEAD.map(function(h){return {v:h,s:'head'};}));
+    var sD=0,sE=0,sG=0,sH=0;
+    list.forEach(function(v,i){
+      var r=first+i,mins=v.minutes*(v.sign||1),dec=mins/60,usd=dec*rate,ars=usd*cot;
+      var trabajos=(v.items||[]).map(function(it){return itemLabel(it)+(it.text?': '+it.text:'');}).join('\n');
+      sD+=mins/1440;sE+=dec;sG+=usd;sH+=ars;
+      rows.push([
+        {v:xlDateSerial(v.date),s:'date'},{v:v.start||'',s:'n'},{v:v.end||'',s:'n'},
+        (mins>=0?{v:mins/1440,s:'hm'}:{v:xlHM(mins),s:'n'}),
+        (mins>=0?{f:'D'+r+'*24',v:dec,s:'dec'}:{v:dec,s:'dec'}),
+        {v:trabajos,s:'wrap'},
+        {f:'E'+r+'*$B$2',v:usd,s:'usd'},{f:'G'+r+'*I'+r,v:ars,s:'ars'},{f:'$B$3',v:cot,s:'ars'}
+      ]);
+    });
+    rows.push([{v:'TOTAL',s:'tot'},{s:'tot'},{s:'tot'},
+      {f:'E'+tot+'/24',v:sD,s:'tothm'},{f:'SUM(E'+first+':E'+last+')',v:sE,s:'totdec'},{s:'tot'},
+      {f:'SUM(G'+first+':G'+last+')',v:sG,s:'totusd'},{f:'SUM(H'+first+':H'+last+')',v:sH,s:'totars'},{s:'tot'}]);
+    compSheets.push({name:nm,rows:rows,cols:[12,9,9,12,13,48,14,16,14],
+      info:{n:list.length,first:first,last:last,tot:tot,sD:sD,sE:sE,sG:sG,sH:sH,rate:rate}});
+  });
+
+  // Hoja Resumen (la celda B3 amarilla es la cotización de todo el libro)
+  var nota=c.fuente==='internet'
+    ? 'Venta del dólar oficial al '+fmtFecha(c.fecha)+' (último día trabajado del mes). Fuente: ArgentinaDatos.'
+    : 'Venta guardada en la app para el '+fmtFecha(c.fecha)+' (último día trabajado del mes). No se pudo verificar en internet.';
+  var R=[];
+  R.push([{v:'Resumen de horas — '+monthLabel(mk),s:'title'}]);
+  R.push([{v:'Generado el '+new Date().toLocaleDateString('es-AR'),s:'n'}]);
+  R.push([{v:'Cotización US$ (venta)',s:'bold'},{v:cot,s:'input'},{v:nota,s:'n'}]);
+  R.push([{v:'Si cambiás la celda amarilla, se recalculan los pesos de todas las hojas.',s:'n'}]);
+  R.push(['Empresa','Visitas','Horas (h:mm)','Horas (decimal)','US$/h','Total US$','Total ARS'].map(function(h){return {v:h,s:'head'};}));
+  var rFirst=6,rLast=rFirst+compSheets.length-1,tN=0,tD=0,tE=0,tG=0,tH=0;
+  compSheets.forEach(function(sh){
+    var q="'"+sh.name+"'!",f=sh.info;
+    tN+=f.n;tD+=f.sD;tE+=f.sE;tG+=f.sG;tH+=f.sH;
+    R.push([
+      {v:sh.name,s:'bold'},
+      {f:'COUNT('+q+'A'+f.first+':A'+f.last+')',v:f.n,s:'int'},
+      {f:q+'D'+f.tot,v:f.sD,s:'hm'},{f:q+'E'+f.tot,v:f.sE,s:'dec'},{f:q+'$B$2',v:f.rate,s:'usd'},
+      {f:q+'G'+f.tot,v:f.sG,s:'usd'},{f:q+'H'+f.tot,v:f.sH,s:'ars'}
+    ]);
+  });
+  R.push([{v:'TOTAL A COBRAR',s:'tot'},
+    {f:'SUM(B'+rFirst+':B'+rLast+')',v:tN,s:'totint'},{f:'SUM(C'+rFirst+':C'+rLast+')',v:tD,s:'tothm'},
+    {f:'SUM(D'+rFirst+':D'+rLast+')',v:tE,s:'totdec'},{s:'tot'},
+    {f:'SUM(F'+rFirst+':F'+rLast+')',v:tG,s:'totusd'},{f:'SUM(G'+rFirst+':G'+rLast+')',v:tH,s:'totars'}]);
+  var sheets=[{name:'Resumen',rows:R,cols:[28,9,13,14,16,16,18]}].concat(compSheets.map(function(s){return {name:s.name,rows:s.rows,cols:s.cols};}));
+  return {sheets:sheets,totals:{visitas:tN,horasDec:tE,ars:tH,usd:tG,cot:cot}};
+}
+
+// ---- cotización del último día trabajado ----
+function lastWorkDay(mk){var d='';db.visits.forEach(function(v){if(monthKey(v.date)===mk&&v.date>d)d=v.date;});return d;}
+function savedVentaOn(dateStr){var m=0;db.visits.forEach(function(v){if(v.date===dateStr&&v.cotiz>m)m=v.cotiz;});return m||cotizNow();}
+function fetchJsonTimeout(url,ms){
+  return new Promise(function(res,rej){
+    var done=false,t=setTimeout(function(){if(!done){done=true;rej(new Error('timeout'));}},ms);
+    fetch(url).then(function(r){
+      if(done)return;done=true;clearTimeout(t);
+      if(!r.ok){var e=new Error('http '+r.status);e.http=true;return rej(e);}
+      r.json().then(res,rej);
+    }).catch(function(e){if(done)return;done=true;clearTimeout(t);rej(e);});
+  });
+}
+// Busca la venta del dólar oficial de ese día; si no hubo cotización (fin de semana o feriado), retrocede hasta 7 días.
+function ventaOnline(dateStr){
+  var p=dateStr.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]),tries=0;
+  function step(){
+    if(tries>7)return Promise.reject(new Error('sin dato'));
+    var s=d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate());
+    return fetchJsonTimeout('https://api.argentinadatos.com/v1/cotizaciones/dolares/oficial/'+s,6000).then(function(j){
+      if(j&&+j.venta>0)return {venta:+j.venta,fecha:s.replace(/\//g,'-')};
+      throw Object.assign(new Error('vacío'),{http:true});
+    }).catch(function(e){
+      if(!e||!e.http)throw e;           // sin conexión o demora: no insiste
+      tries++;d.setDate(d.getDate()-1);return step();
+    });
+  }
+  return step();
+}
+function exportMonthXLSX(){
+  var mk=val('liqMonth')||monthKey(todayStr());
+  if(!db.visits.some(function(v){return monthKey(v.date)===mk;}))return alert('No hay visitas en '+monthLabel(mk)+' para exportar.');
+  var btn=$('btnXlsx'),old=btn.textContent;btn.disabled=true;btn.textContent='Buscando la cotización…';
+  var day=lastWorkDay(mk);
+  return ventaOnline(day)
+    .then(function(r){return {venta:r.venta,fecha:r.fecha,fuente:'internet'};})
+    .catch(function(){return {venta:savedVentaOn(day),fecha:day,fuente:'guardada'};})
+    .then(function(c){
+      btn.disabled=false;btn.textContent=old;
+      var wb=buildMonthWorkbook(mk,c);
+      dl(new Blob([xlsxBuild(wb.sheets)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'horas_'+mk+'.xlsx');
+      if(!c.venta)alert('No hay ninguna cotización cargada. El Excel salió con la celda amarilla del Resumen en 0: cargala ahí.');
+      else if(c.fuente==='guardada')alert('No pude buscar la cotización en internet. Usé la guardada en la app para el '+fmtFecha(c.fecha)+': $'+c.venta+'. Podés cambiarla en la celda amarilla del Resumen.');
+    });
 }
 
 // ====================== LIMPIEZA ======================
@@ -824,17 +1127,26 @@ function renderDash(){
       '<button class="btn btn-small btn-outline" onclick="clearDeadline('+p.id+')">🔕 Quitar aviso</button>'+
       '<button class="btn btn-small btn-danger" onclick="delProject('+p.id+')">✕</button></div></div>');
   });
-  db.tasks.filter(function(t){return !t.done;}).forEach(function(tk){
-    var d=tk.due?daysTo(tk.due):null; if(d===null||d>3)return;
+  var abiertos=db.tasks.filter(function(t){return !t.done;});
+  abiertos.sort(function(a,b){
+    var da=a.due?daysTo(a.due):9999, dbb=b.due?daysTo(b.due):9999;
+    return da-dbb;
+  });
+  abiertos.forEach(function(tk){
+    var d=tk.due?daysTo(tk.due):null;
     var c=compById(tk.compId)||{name:'—'};
-    al.push('<div class="list-card"><div class="list-title">📋 '+esc(tk.text)+'</div>'+
-      '<div class="muted">'+esc(c.name)+(tk.who?' · responder a <b>'+esc(tk.who)+'</b>':'')+' · '+(d<0?'VENCIDO':'vence en '+d+' d')+'</div>'+
+    var urgente=(d!==null&&d<=3);
+    var cuando=d===null?'sin fecha':(d<0?'VENCIDO hace '+(-d)+' d':d===0?'vence HOY':'vence en '+d+' d');
+    al.push('<div class="list-card"'+(urgente?' style="border-left:3px solid var(--danger)"':'')+'>'+
+      '<div class="list-title">📋 '+esc(tk.text)+'</div>'+
+      '<div class="muted">'+esc(c.name)+(tk.who?' · responder a <b>'+esc(tk.who)+'</b>':'')+' · '+
+      (urgente?'<b style="color:var(--danger)">'+cuando+'</b>':cuando)+'</div>'+
       '<div class="row-flex" style="margin-top:7px"><button class="btn btn-small btn-success" onclick="toggleTask('+tk.id+')">✓ Hecho</button>'+
       '<button class="btn btn-small btn-outline" onclick="editTask('+tk.id+')">✎</button>'+
       '<button class="btn btn-small btn-outline" onclick="waTask('+tk.id+')">💬</button>'+
       '<button class="btn btn-small btn-danger" onclick="delTask('+tk.id+')">✕</button></div></div>');
   });
-  $('dashAlertsList').innerHTML=al.length?al.join(''):'<div class="empty">Nada urgente. 👌</div>';
+  $('dashAlertsList').innerHTML=al.length?al.join(''):'<div class="empty">Nada pendiente. 👌</div>';
 
   var mats=db.projects.filter(function(p){return p.status!=='terminado'&&p.materials;}).map(function(p){
     var c=compById(p.compId)||{name:'—'};
